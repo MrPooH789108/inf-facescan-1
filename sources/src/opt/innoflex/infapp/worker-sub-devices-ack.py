@@ -17,7 +17,6 @@ config_obj = configparser.ConfigParser()
 config_obj.read(config_path)
 
 infcollection = config_obj["collection"]
-infbucket = config_obj["bucket"]
 infdatabase = config_obj["db"]
 inftopic = config_obj["topic"]
 infqueue = config_obj["queue"]
@@ -26,10 +25,6 @@ infetc = config_obj["etc"]
 infamqp = config_obj["amqp"]
 infroute = config_obj["route"]
 infoperation = config_obj["operation"]
-
-bucketName = infbucket['name']
-folderName = infbucket['folder']
-bucketURL = infbucket['url']
 
 dbUser = str(os.environ['DB_USER'])
 dbPass = str(os.environ['DB_PASS'])
