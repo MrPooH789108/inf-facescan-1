@@ -3,7 +3,6 @@
 from paho.mqtt.client import MQTT_LOG_INFO, MQTT_LOG_NOTICE, MQTT_LOG_WARNING, MQTT_LOG_ERR, MQTT_LOG_DEBUG
 from paho.mqtt import client as mqtt
 from module import alicloudAMQP
-from hashlib import sha1
 import configparser
 import logging
 import socket
@@ -26,8 +25,8 @@ brokerUrl=infmqtt['endpoint']
 exchange = str(infamqp['exchange'])
 parent_topic = str(inftopic['parent'])
 
-username = str(os.environ['FWD_USER'])
-password = str(os.environ['FWD_PASS'])
+username = str(os.environ['FORWARDER_USER'])
+password = str(os.environ['FORWARDER_PASS'])
 
 topic = parent_topic+"/#"
 recQueue = infqueue['devicerec']

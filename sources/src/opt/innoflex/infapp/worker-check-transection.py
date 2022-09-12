@@ -17,7 +17,6 @@ config_obj.read(config_path)
 infsecinterval = config_obj["interval_sec"]
 infcollection = config_obj["collection"]
 infoperation = config_obj["operation"]
-infbucket = config_obj["bucket"]
 infdatabase = config_obj["db"]
 inftopic = config_obj["topic"]
 inflog = config_obj["log"]
@@ -36,10 +35,6 @@ dbClient = MongoClient(host=dbHost, replicaset=dbReplicaSet, username=dbUser,
 dbName = infdatabase['name']
 workertb = infcollection['workers']
 transectiontb = infcollection['transections']
-
-bucketName = infbucket['name']
-folderName = infbucket['folder']
-bucketURL = infbucket['url']
 
 # run every 10 mins = 600 seconds
 transection_review_interval = int(infsecinterval['transection_review'])

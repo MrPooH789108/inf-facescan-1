@@ -18,17 +18,12 @@ config_obj = configparser.ConfigParser()
 config_obj.read(config_path)
 
 infcollection = config_obj["collection"]
-infbucket = config_obj["bucket"]
 infqueue = config_obj["queue"]
 infetc = config_obj["etc"]
 inflog = config_obj["log"]
 infamqp = config_obj["amqp"]
 infroute = config_obj["route"]
 infdatabase = config_obj["db"]
-
-bucketName = infbucket['name']
-folderName = infbucket['folder']
-bucketURL = infbucket['url']
 
 dbUser = str(os.environ['DB_USER'])
 dbPass = str(os.environ['DB_PASS'])
@@ -75,10 +70,9 @@ class ThreadedConsumer(threading.Thread):
                 info = message['info']
                 messageId = message['messageId']
                 workerCode = message['info']['workerCode']
-                workerName = str(message['info']['name']).split(" ")
-                firstName = workerName[0].upper()
                 facilities = message['info']['facilities']
                 status = message['info']['status']
+                pictureURL = message['info']['pictureURL']
 
                 time = datetime.now()
                 last_update = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -245,28 +239,12 @@ class ThreadedConsumer(threading.Thread):
                         all_devices.append(device)
                         print(all_devices)
 
-                    # picture section
-                    bucket = connection.getBucketConnection(bucketURL, bucketName)
-                    picPath = folderName+"/"+workerCode+"-"+firstName+".jpg"
-                    print("picPath : "+picPath)
-                    foundObj = "invalid"
-                    for obj in oss2.ObjectIterator(bucket, prefix=picPath):
-                        foundObj = "valid"
-                        print(obj.key)
-
-                    picture = {
-                        "status": foundObj,
-                        "recheck": 0,
-                        "last_update": last_update,
-                        "path": picPath,
-                    }
-
                     del message["messageId"]
                     del message["operation"]
 
                     message["registration"] = registration
                     message["devices"] = all_devices
-                    message["picture"] = picture
+                    message["pictureURL"] = pictureURL
                     message["_id"] = workerCode
 
                     print(message)

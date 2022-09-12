@@ -9,7 +9,6 @@ import threading
 import requests
 import logging
 import base64
-import socket
 import time
 import sys
 import os
@@ -21,7 +20,6 @@ config_obj.read(config_path)
 infsecinterval = config_obj["interval_sec"]
 infcollection = config_obj["collection"]
 infoperation = config_obj["operation"]
-infbucket = config_obj["bucket"]
 infdatabase = config_obj["db"]
 inftopic = config_obj["topic"]
 inflog = config_obj["log"]
@@ -38,12 +36,7 @@ dbName = infdatabase['name']
 workertb = infcollection['workers']
 transectiontb = infcollection['transections']
 
-bucketName = infbucket['name']
-folderName = infbucket['folder']
-bucketURL = infbucket['url']
-
 parent_topic = inftopic['parent']
-appname = socket.gethostname()+'_syncAttendance'
 
 # run every 10 mins = 600 seconds
 unregister_review_interval = int(infsecinterval['unregister_review'])
@@ -79,7 +72,7 @@ def checkRegistration():
         mydb = dbClient[dbName]
         mycol = mydb[workertb]
 
-        myquery = {"picture.status": "valid", "devices": {"$elemMatch": {"$or": [{"status": "INACTIVE", "regester": "registered"}, {
+        myquery = {"devices": {"$elemMatch": {"$or": [{"status": "INACTIVE", "regester": "registered"}, {
             "$or": [{"status": "ACTIVE", "regester": "unregistered"}, {"status": "BLACKLISTED", "regester": "unregistered"}]}]}}}
 
         workerlist = mycol.find(myquery)
@@ -91,14 +84,7 @@ def checkRegistration():
             workerName = w['info']['name']
             workerGender = w['info']['gender']
             devices = w["devices"]
-            picPath = w['picture']['path']
-
-            bucket = connection.getBucketConnection(bucketURL, bucketName)
-            # The validity period of the URL is 60 seconds.
-            picURI = bucket.sign_url('GET', picPath, 60, slash_safe=True)
-            print('the address of the signed URL:', picURI)
-            picBase64 = get_as_base64(picURI)
-            pic = "data:image/jpeg;base64,"+picBase64.decode()
+            pictureURL = w['pictureURL']
 
             all_transection = []
 
@@ -128,7 +114,7 @@ def checkRegistration():
                             "tempCardType": tempCardType,
                             "personType": 0,  # 0=White list, 1=blacklist
                             "cardType": 0,
-                            "pic": pic
+                            "picURI": pictureURL
                         }
                     }
 
@@ -139,7 +125,6 @@ def checkRegistration():
                     print(pub_topic)
                     alicloudMQTT.mqttPublish(worker_json, pub_topic)
 
-                    del worker_json["info"]["pic"]
                     transection = {}
                     transection["topic"] = pub_topic
                     transection["body"] = worker_json
@@ -197,7 +182,7 @@ def checkRegistration():
                             "tempCardType": tempCardType,
                             "personType": 1,  # 0=Whitelist, 1=blacklist
                             "cardType": 0,
-                            "pic": pic
+                            "picURI": pictureURL
                         }
                     }
 
@@ -208,7 +193,6 @@ def checkRegistration():
                     print(pub_topic)
                     alicloudMQTT.mqttPublish(worker_json, pub_topic)
 
-                    del worker_json["info"]["pic"]
                     transection = {}
                     transection["topic"] = pub_topic
                     transection["body"] = worker_json

@@ -46,8 +46,6 @@ def conf(
         None, "--amqp-port", help="set AMQP port to config file.", show_default=False),
     amqp_virtualhost: str = typer.Option(
         None, "--amqp-virtualhost", help="set AMQP virtualhost to config file.", show_default=False),
-    bucket_url: str = typer.Option(
-        None, "--bucket-url", help="set bucket url to config file.", show_default=False),
     db_nodes: str = typer.Option(
         None, "--db-nodes", help="set database nodes to config file.", show_default=False),
     db_port: str = typer.Option(
@@ -62,6 +60,7 @@ def conf(
         None, "--mqtt-instanceid", help="set MQTT instanceid to config file.", show_default=False),
     path: Optional[bool] = typer.Option(
         None, "--path", callback=config_path_callback, help="config file location."),
+        
 ) -> None:
     """ config environment and variables """
     if amqp_endpoint != None:
@@ -86,11 +85,6 @@ def conf(
         if av:
             typer.secho(
                 f"amqp_virtualhost = {amqp_virtualhost} ", fg=typer.colors.GREEN,)
-
-    if bucket_url != None:
-        bu = edit_config("bucket", "url", bucket_url)
-        if bu:
-            typer.secho(f"bucket_url = {bucket_url} ", fg=typer.colors.GREEN,)
 
     if db_nodes != None:
         de = edit_config("db", "endpoint", db_nodes)

@@ -5,7 +5,6 @@ import sys
 import ast
 import pika
 import socket
-import pymongo
 import logging
 import threading
 import configparser
@@ -23,14 +22,9 @@ infqueue = config_obj["queue"]
 inftopic = config_obj["topic"]
 inflog = config_obj["log"]
 infetc = config_obj["etc"]
-infbucket = config_obj["bucket"]
 infoperation = config_obj["operation"]
 infamqp = config_obj["amqp"]
 infroute = config_obj["route"]
-
-bucketName = infbucket['name']
-folderName = infbucket['folder']
-bucketURL = infbucket['url']
 
 dbUser = str(os.environ['DB_USER'])
 dbPass = str(os.environ['DB_PASS'])
@@ -66,7 +60,8 @@ class ThreadedConsumer(threading.Thread):
         connect = pika.BlockingConnection(connection.getConnectionParam())
         self.channel = connect.channel()
         self.channel.queue_declare(queueName, durable=True, auto_delete=False)
-        self.channel.queue_bind(exchange=exchange,queue=queueName,routing_key=routing_key)
+        self.channel.queue_bind(
+            exchange=exchange, queue=queueName, routing_key=routing_key)
         self.channel.basic_qos(prefetch_count=THREADS*10)
         threading.Thread(target=self.channel.basic_consume(
             queueName, on_message_callback=self.on_message))
@@ -133,7 +128,8 @@ class ThreadedConsumer(threading.Thread):
 
             routingKey = exchange+"."+str(infroute['attendanceres'])
             queueName = str(infqueue['attendanceres'])
-            isqmqpSuccess = alicloudAMQP.amqpPublish(exchange,routingKey,message,queueName)
+            isqmqpSuccess = alicloudAMQP.amqpPublish(
+                exchange, routingKey, message, queueName)
 
             all_transection = []
             transection = {}
@@ -201,17 +197,18 @@ def main():
 
 
 if __name__ == "__main__":
-    #Creating and Configuring Logger
+    # Creating and Configuring Logger
     logger = logging.getLogger('attendance-get')
     fileHandler = logging.FileHandler(LOG_PATH+"/inf-attendance-get.log")
     streamHandler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "function": "%(funcName)s", "message": "%(message)s"}')
+    formatter = logging.Formatter(
+        '{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "function": "%(funcName)s", "message": "%(message)s"}')
     streamHandler.setFormatter(formatter)
     fileHandler.setFormatter(formatter)
     logger.addHandler(streamHandler)
     logger.addHandler(fileHandler)
     logger.setLevel(logging.DEBUG)
 
-    #reduce pika log level
+    # reduce pika log level
     logging.getLogger("pika").setLevel(logging.WARNING)
     main()

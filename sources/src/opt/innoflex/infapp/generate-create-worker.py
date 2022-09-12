@@ -11,7 +11,6 @@ infamqp = config_obj["amqp"]
 def randomString(length):
     letters_and_digits = string.ascii_lowercase + string.digits
     result_str = ''.join((random.choice(letters_and_digits) for i in range(length)))
-    #print("Random alphanumeric String is:", result_str)
     return result_str
 
 messageId= randomString(8)+"-"+randomString(4)+"-"+randomString(4)+"-"+randomString(4)+"-"+randomString(12)
@@ -24,6 +23,7 @@ msg = {
         "gender": "FEMALE",
         "workerType": "DAILY_WORKER",
         "facilities": ["LKB","KSN"],
+        "pictureURL": "https://share-bluegreen.s3.ap-southeast-1.amazonaws.com/pratchaya.jpg",
         "status": "INACTIVE"
     }
 }
