@@ -1,0 +1,162 @@
+version: "3.9"
+
+x-common-variables:
+  &common-variables
+  AMQP_ENDPOINT: amqp-sg-4hr2u17ug001.vpc.amqp-malaysia-share.amqp.aliyuncs.com
+  AMQP_INSTANCEID: amqp-sg-4hr2u17ug001
+  AMQP_PORT: 5672
+  AMQP_VIRTUALHOST: vhost-staging
+  AMQP_USER: DOCKER-SECRET->amqp_user
+  AMQP_PASS: DOCKER-SECRET->amqp_pass
+
+  BUCKET_URL: https://oss-ap-southeast-3-internal.aliyuncs.com
+
+  DB_NODES: dds-zf842b06314b9eb41.mongodb.kualalumpur.rds.aliyuncs.com:3717,dds-zf842b06314b9eb42.mongodb.kualalumpur.rds.aliyuncs.com:3717
+  DB_PORT: 3717
+  DB_REPLICASET: mgset-450042716
+  DB_USER: DOCKER-SECRET->db_user
+  DB_PASS: DOCKER-SECRET->db_pass
+
+  MQTT_ENDPOINT: mqttintl-sg-6wr2u17by01-internal.mqtt.aliyuncs.com
+  MQTT_GROUPID: GID_LAZADA_WFM
+  MQTT_INSTANCEID: mqttintl-sg-6wr2u17by01
+  FWD_USER: DOCKER-SECRET->fwd_user
+  FWD_PASS: DOCKER-SECRET->fwd_pass
+  CLIENT_USER: DOCKER-SECRET->client_user
+  CLIENT_PASS: DOCKER-SECRET->client_pass
+
+  OSS_ACCESS_KEY: DOCKER-SECRET->oss_access_key
+  OSS_SECRET_KEY: DOCKER-SECRET->oss_secret_key
+
+x-secrets: &secrets
+  secrets:
+    - oss_access_key
+    - oss_secret_key
+    - db_user
+    - db_pass
+    - amqp_user
+    - amqp_pass
+    - fwd_user
+    - fwd_pass
+    - client_user
+    - client_pass
+
+services:
+  # forwarder
+  forwarder:
+    <<: *secrets
+    
+    image: infapp
+    hostname: infapp01
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: forwarder
+    volumes:
+      - /opt/innoflex/config:/opt/innoflex/config
+      - /var/log/innoflex:/var/log/innoflex
+
+  # heartbeat
+  heartbeat:
+    <<: *secrets
+    image: infapp
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: heartbeat
+    volumes:
+      - /opt/innoflex/config:/opt/innoflex/config
+      - /var/log/innoflex:/var/log/innoflex
+
+  # ---- attendance section ----
+  attendance-get:
+    <<: *secrets
+    image: infapp
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: attendance-get
+    volumes:
+      - /opt/innoflex/config:/opt/innoflex/config
+      - /var/log/innoflex:/var/log/innoflex
+
+  attendance-sync:
+    <<: *secrets
+    image: infapp
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: attendance-sync
+    volumes:
+      - /opt/innoflex/config:/opt/innoflex/config
+      - /var/log/innoflex:/var/log/innoflex
+
+  # ---- workers section ----
+  worker-check-registration:
+    <<: *secrets
+    image: infapp
+    hostname: infapp01
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: worker-check-registration
+    volumes:
+      - /opt/innoflex/config:/opt/innoflex/config
+      - /var/log/innoflex:/var/log/innoflex
+
+  worker-check-invalid-picture:
+    <<: *secrets
+    image: infapp
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: worker-check-invalid-picture
+    volumes:
+      - /opt/innoflex/config:/opt/innoflex/config
+      - /var/log/innoflex:/var/log/innoflex
+
+  worker-check-transection:
+    <<: *secrets
+    image: infapp
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: worker-check-transection
+    volumes:
+      - /opt/innoflex/config:/opt/innoflex/config
+      - /var/log/innoflex:/var/log/innoflex
+
+  worker-sub-create-worker:
+    <<: *secrets
+    image: infapp
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: worker-sub-create-worker
+    volumes:
+      - /opt/innoflex/config:/opt/innoflex/config
+      - /var/log/innoflex:/var/log/innoflex
+
+  worker-sub-devices-ack:
+    <<: *secrets
+    image: infapp
+    environment:
+      <<: *common-variables
+      SERVICE_NAME: worker-sub-devices-ack
+    volumes:
+      - /opt/innoflex/config:/opt/innoflex/config
+      - /var/log/innoflex:/var/log/innoflex
+
+secrets:
+  oss_access_key:
+    external: true
+  oss_secret_key:
+    external: true
+  db_user:
+    external: true
+  db_pass:
+    external: true
+  amqp_user:
+    external: true
+  amqp_pass:
+    external: true
+  fwd_user:
+    external: true
+  fwd_pass:
+    external: true
+  client_user:
+    external: true
+  client_pass:
+    external: true

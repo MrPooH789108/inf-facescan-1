@@ -1,0 +1,109 @@
+def remote = [:]
+    remote.name = 'alibaba'
+    remote.host = '47.250.40.95'
+    remote.user = 'root'
+    remote.password = 'BgsP@ssw0rd123'
+    remote.allowAnyHosts = true
+pipeline {
+    agent any
+    stages {   
+        stage('Checkout project'){
+            steps {
+                echo 'downloading git directory..'
+	            git 'https://github.com/pratchayakc/inf-facescan'
+            }
+        }      
+        stage('git secret check'){
+            steps{
+	            script{
+		            echo 'running trufflehog to check project history for secrets'
+		            sh 'trufflehog --regex --entropy=False --max_depth=3 https://github.com/pratchayakc/inf-facescan'
+	            }
+            }
+        }
+        stage('SCA'){
+            steps{
+                echo 'running python safety check on requirements.txt file'
+                sh 'safety check -r $WORKSPACE/sources/requirements.txt'
+            }
+        }  
+        stage('SAST') {
+            steps {
+                echo 'Testing source code for security bugs and vulnerabilities'
+	            sh 'bandit -r $WORKSPACE/sources/src/ -ll || true'
+            }
+        }
+
+        stage('Build Docker Image') {
+            agent any
+            steps {
+                sh 'docker build ./sources -t infapp'
+            }
+        } 
+
+        stage('Download Docker Image'){
+            agent any
+            steps {
+                sh 'docker save infapp:latest | gzip > infapp.tar.gz'
+            }
+        }
+
+        stage('Create Directory innoflex'){
+            agent any
+            steps {
+                sshCommand remote: remote, command: """
+            mkdir /root/innoflex
+            """
+            }
+        }
+
+        stage('Copy Image and Compose File to ECS'){
+            steps {
+            sshPut remote: remote, from: '/var/jenkins_home/workspace/inf-facescan@2/infapp.tar.gz', into: '/root/innoflex'
+            sshPut remote: remote, from: '/var/jenkins_home/workspace/inf-facescan@2/sources/docker-compose.yml', into: '/root/innoflex'
+            }
+        }
+
+        stage('Remote ECS and Install Image'){
+            steps {
+            sshCommand remote: remote, command: """
+            cd /root/innoflex
+            docker load < infapp.tar.gz
+            """
+            }
+        }
+
+        stage('Create Docker Secret'){
+            steps {
+            sshCommand remote: remote, command: """
+		echo "root" | docker secret create db_user -
+		echo "BgsMongo123" | docker secret create db_pass -
+
+		echo "LTAI5tHV1DF5hXfU6uAxJuSB" | docker secret create oss_access_key -
+		echo "CeEeDoikP3KRrW5WKdnRVhHKVfs4hZ" | docker secret create oss_secret_key -
+
+		echo "MjphbXFwLXNnLTRocjJ1MTd1ZzAwMTpMVEFJNXRIVjFERjVoWGZVNnVBeEp1U0I=" | docker secret create amqp_user -
+		echo "MzAxMzhCQTFEQjZFMTM5RjMwQzY2QjYyMTM3MzdFRjMzRTA0RjRBMjoxNjYxNDIzMjA4NTgy" | docker secret create amqp_pass -
+
+		echo "Signature|LTAI5tHV1DF5hXfU6uAxJuSB|mqttintl-sg-6wr2u17by01" | docker secret create fwd_user -
+		echo "1XafgYDQ65xR01IsKSppEK1bvzU=" | docker secret create fwd_pass -
+
+		echo "Signature|LTAI5tBn7dELutLoEcfTvPr8|mqttintl-sg-6wr2u17by01" | docker secret create client_user -
+		echo "bTAB7lc8PykO6y9GeD1AiDZWfGg=" | docker secret create client_pass -            
+		"""
+            }
+        }
+
+        stage('Deploy stack via compose file'){
+            steps {
+            sshCommand remote: remote, command: """
+            cd /root/innoflex
+            docker stack deploy -c docker-compose.yml infapp
+            """
+            }
+        }
+    }
+}
+
+/*
+*/
