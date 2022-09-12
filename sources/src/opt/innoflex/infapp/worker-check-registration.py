@@ -83,7 +83,7 @@ def checkRegistration():
             workerName = w['info']['name']
             workerGender = w['info']['gender']
             devices = w["devices"]
-            pictureURL = w['pictureURL']
+            pictureURL = w['info']['pictureURL']
 
             all_transection = []
 

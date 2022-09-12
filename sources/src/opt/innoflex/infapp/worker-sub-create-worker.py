@@ -72,7 +72,6 @@ class ThreadedConsumer(threading.Thread):
                 workerCode = message['info']['workerCode']
                 facilities = message['info']['facilities']
                 status = message['info']['status']
-                pictureURL = message['info']['pictureURL']
 
                 time = datetime.now()
                 last_update = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -244,7 +243,6 @@ class ThreadedConsumer(threading.Thread):
 
                     message["registration"] = registration
                     message["devices"] = all_devices
-                    message["pictureURL"] = pictureURL
                     message["_id"] = workerCode
 
                     print(message)
