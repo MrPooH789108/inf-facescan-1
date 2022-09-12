@@ -79,14 +79,11 @@ pipeline {
 		echo "root" | docker secret create db_user -
 		echo "BgsMongo123" | docker secret create db_pass -
 
-		echo "LTAI5tHV1DF5hXfU6uAxJuSB" | docker secret create oss_access_key -
-		echo "CeEeDoikP3KRrW5WKdnRVhHKVfs4hZ" | docker secret create oss_secret_key -
-
 		echo "MjphbXFwLXNnLTRocjJ1MTd1ZzAwMTpMVEFJNXRIVjFERjVoWGZVNnVBeEp1U0I=" | docker secret create amqp_user -
 		echo "MzAxMzhCQTFEQjZFMTM5RjMwQzY2QjYyMTM3MzdFRjMzRTA0RjRBMjoxNjYxNDIzMjA4NTgy" | docker secret create amqp_pass -
 
-		echo "Signature|LTAI5tHV1DF5hXfU6uAxJuSB|mqttintl-sg-6wr2u17by01" | docker secret create fwd_user -
-		echo "1XafgYDQ65xR01IsKSppEK1bvzU=" | docker secret create fwd_pass -
+		echo "Signature|LTAI5tHV1DF5hXfU6uAxJuSB|mqttintl-sg-6wr2u17by01" | docker secret create forwarder_user -
+		echo "1XafgYDQ65xR01IsKSppEK1bvzU=" | docker secret create forwarder_pass -
 
 		echo "Signature|LTAI5tBn7dELutLoEcfTvPr8|mqttintl-sg-6wr2u17by01" | docker secret create client_user -
 		echo "bTAB7lc8PykO6y9GeD1AiDZWfGg=" | docker secret create client_pass -            
