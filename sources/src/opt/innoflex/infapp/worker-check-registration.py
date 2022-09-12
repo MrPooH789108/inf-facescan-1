@@ -2,7 +2,6 @@
 
 from module import alicloudDatabase
 from module import alicloudMQTT
-from module import connection
 from pymongo import MongoClient
 import configparser
 import threading
