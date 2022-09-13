@@ -13,7 +13,6 @@ password=str(os.environ['AMQP_PASS'])
 amqp_host = infamqp['endpoint']
 amqp_port = infamqp['port']
 virtualHost = infamqp['virtualHost']
-amqp_instanceId = infamqp['instanceId']
 
 def getConnectionParam():
     credentials = pika.PlainCredentials(

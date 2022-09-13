@@ -17,7 +17,6 @@ infqueue = config_obj["queue"]
 username = str(os.environ['CLIENT_USER'])
 password = str(os.environ['CLIENT_PASS'])
 
-instanceId = infmqtt['instanceId']
 groupId = infmqtt['groupId']
 brokerUrl = infmqtt['endpoint']
 port = int(infmqtt['port'])

@@ -19,7 +19,6 @@ infmqtt = config_obj["mqtt"]
 infamqp = config_obj["amqp"]
 inflog = config_obj["log"]
 
-instanceId = infmqtt['instanceid']
 groupId = infmqtt['groupid']
 brokerUrl=infmqtt['endpoint']
 exchange = str(infamqp['exchange'])
