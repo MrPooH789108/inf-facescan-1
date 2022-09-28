@@ -40,8 +40,6 @@ def edit_config(section, key, value):
 def conf(
     amqp_endpoint: str = typer.Option(
         None, "--amqp-endpoint", help="set AMQP endpoint to config file.", show_default=False),
-    amqp_instanceid: str = typer.Option(
-        None, "--amqp-instanceid", help="set AMQP instanceid to config file.", show_default=False),
     amqp_port: str = typer.Option(
         None, "--amqp-port", help="set AMQP port to config file.", show_default=False),
     amqp_virtualhost: str = typer.Option(
@@ -56,8 +54,6 @@ def conf(
         None, "--mqtt-endpoint", help="set MQTT endpoint to config file.", show_default=False),
     mqtt_groupid: str = typer.Option(
         None, "--mqtt-groupid", help="set MQTT groupid to config file.", show_default=False),
-    mqtt_instanceid: str = typer.Option(
-        None, "--mqtt-instanceid", help="set MQTT instanceid to config file.", show_default=False),
     path: Optional[bool] = typer.Option(
         None, "--path", callback=config_path_callback, help="config file location."),
         
@@ -68,12 +64,6 @@ def conf(
         if ae:
             typer.secho(
                 f"amqp_endpoint = {amqp_endpoint} ", fg=typer.colors.GREEN,)
-
-    if amqp_instanceid != None:
-        ai = edit_config("amqp", "instanceid", amqp_instanceid)
-        if ai:
-            typer.secho(
-                f"amqp_instanceid = {amqp_instanceid} ", fg=typer.colors.GREEN,)
 
     if amqp_port != None:
         ap = edit_config("amqp", "port", amqp_port)
@@ -114,13 +104,6 @@ def conf(
         if mg:
             typer.secho(
                 f"mqtt_groupid = {mqtt_groupid} ", fg=typer.colors.GREEN,)
-
-    if mqtt_instanceid != None:
-        mi = edit_config("mqtt", "instanceid", mqtt_instanceid)
-        if mi:
-            typer.secho(
-                f"mqtt_instanceid = {mqtt_instanceid} ", fg=typer.colors.GREEN,)
-
 
 def _version_callback(value: bool) -> None:
     if value:
