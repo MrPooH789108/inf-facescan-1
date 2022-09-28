@@ -3,24 +3,22 @@ version: "3.9"
 x-common-variables:
   &common-variables
   # AMQP
-  AMQP_ENDPOINT: amqp-sg-4hr2u17ug001.vpc.amqp-malaysia-share.amqp.aliyuncs.com
-  AMQP_INSTANCEID: amqp-sg-4hr2u17ug001
+  AMQP_ENDPOINT: amqp-cn-7pp2uatij006.ap-southeast-1.amqp-0.vpc.mq.amqp.aliyuncs.com
   AMQP_PORT: 5672
   AMQP_VIRTUALHOST: vhost-staging
   AMQP_USER: DOCKER-SECRET->amqp_user
   AMQP_PASS: DOCKER-SECRET->amqp_pass
 
   # Database
-  DB_NODES: dds-zf842b06314b9eb41.mongodb.kualalumpur.rds.aliyuncs.com:3717,dds-zf842b06314b9eb42.mongodb.kualalumpur.rds.aliyuncs.com:3717
+  DB_NODES: dds-t4n75b135a2a92c41.mongodb.singapore.rds.aliyuncs.com:3717,dds-t4n75b135a2a92c42.mongodb.singapore.rds.aliyuncs.com:3717
   DB_PORT: 3717
-  DB_REPLICASET: mgset-450042716
+  DB_REPLICASET: mgset-305733659
   DB_USER: DOCKER-SECRET->db_user
   DB_PASS: DOCKER-SECRET->db_pass
 
   # MQTT
-  MQTT_ENDPOINT: mqttintl-sg-6wr2u17by01-internal.mqtt.aliyuncs.com
+  MQTT_ENDPOINT: mqtt-cn-7pp2uatqu07-internal-vpc.mqtt.aliyuncs.com
   MQTT_GROUPID: GID_LAZADA_WFM
-  MQTT_INSTANCEID: mqttintl-sg-6wr2u17by01
   FORWARDER_USER: DOCKER-SECRET->forwarder_user
   FORWARDER_PASS: DOCKER-SECRET->forwarder_pass
   CLIENT_USER: DOCKER-SECRET->client_user
