@@ -39,9 +39,6 @@ devicetb = infcollection['devices']
 attendancetb = infcollection['attendances']
 blacklistlogtb = infcollection['blacklists']
 
-parent_topic = inftopic['parent']
-sub_topic = inftopic['attendancesync']
-pub_topic = parent_topic+"/"+sub_topic
 queueName = infqueue['devicerec']
 exchange = infamqp['exchange']
 route = str(infroute['devicerec'])
@@ -108,8 +105,8 @@ class SyncAttendanceHandler(threading.Thread):
                 8)+"-"+randomString(4)+"-"+randomString(4)+"-"+randomString(4)+"-"+randomString(12)
             print("messageId : "+messageId)
 
-            attendanceDate = message["info"]["time"]
-
+            attendanceTime = str(message["info"]["time"])
+            attendanceDate = attendanceTime.replace("/","-")
             print("Timestamp : ", attendanceDate)
 
             direction = message["info"]["direction"]  # exit or entr
@@ -135,19 +132,9 @@ class SyncAttendanceHandler(threading.Thread):
             }
 
             if personType == "0":  # whitelist
-                routingKey = exchange+"."+str(infroute['workersyncres'])
-                queueName = str(infqueue['workersyncres'])
-                isqmqpSuccess = alicloudAMQP.amqpPublish(exchange,routingKey,message,queueName)
-                log = {
-                    "data": message,
-                    "tasks": {
-                        "amqp": {
-                            "queue": queueName,
-                            "success": isqmqpSuccess
-                        },
-                    }
-                }
-
+                routing = exchange+"."+str(infroute['attendancesync'])
+                queue = str(infqueue['attendancesync'])
+                isqmqpSuccess = alicloudAMQP.amqpPublish(exchange,routing,syncAttendance_json,queue)
                 isSuccess = alicloudDatabase.insertToDB(
                     attendancetb, syncAttendance_json)
 
@@ -155,7 +142,7 @@ class SyncAttendanceHandler(threading.Thread):
                     "data": syncAttendance_json,
                     "tasks": {
                         "amqp": {
-                            "queue": queueName,
+                            "queue": queue,
                             "success": isqmqpSuccess
                         },
                         "database": {

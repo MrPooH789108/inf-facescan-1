@@ -4,7 +4,6 @@ import os
 import sys
 import ast
 import pika
-import socket
 import logging
 import threading
 import configparser
@@ -40,15 +39,12 @@ attendancetb = infcollection['attendances']
 transectiontb = infcollection['transections']
 
 get_attendance_operation_name = infoperation['get_attendance']
-appname = socket.gethostname()+'_getAttendance'
 
 parent_topic = inftopic['parent']
-sub_topic = inftopic['attendanceRes']
-pub_topic = parent_topic+"/"+sub_topic
-queueName = infqueue['attendanceget']
-exchange = infamqp['exchange']
+QUEUENAME = infqueue['attendanceget']
+EXCHANGE = infamqp['exchange']
 route = str(infroute['attendanceget'])
-routing_key = exchange+"."+route
+ROUTING_KEY = EXCHANGE+"."+route
 
 LOG_PATH = inflog['path']
 THREADS = int(infetc['threadnum'])
@@ -59,39 +55,54 @@ class ThreadedConsumer(threading.Thread):
         threading.Thread.__init__(self)
         connect = pika.BlockingConnection(connection.getConnectionParam())
         self.channel = connect.channel()
-        self.channel.queue_declare(queueName, durable=True, auto_delete=False)
+        self.channel.queue_declare(QUEUENAME, durable=True, auto_delete=False)
         self.channel.queue_bind(
-            exchange=exchange, queue=queueName, routing_key=routing_key)
+            exchange=EXCHANGE, queue=QUEUENAME, routing_key=ROUTING_KEY)
         self.channel.basic_qos(prefetch_count=THREADS*10)
         threading.Thread(target=self.channel.basic_consume(
-            queueName, on_message_callback=self.on_message))
+            QUEUENAME, on_message_callback=self.on_message))
 
     def on_message(self, channel, method_frame, header_frame, body):
         try:
             print(method_frame.delivery_tag)
             body = str(body.decode())
+            body = body.replace("null",'""')
             print(body)
             print()
 
             message = ast.literal_eval(body)
             messageId = message["messageId"]
             operation = message["operation"]
+
             startTime = str(message["info"]["startTime"])
             endTime = str(message["info"]["endTime"])
+
             workerCodes = message["info"]["workerCodes"]
             facilities = message["info"]["facilities"]
 
             mydb = dbClient[dbName]
             mycol = mydb[attendancetb]
 
-            all_attendances = []
-            for code in workerCodes:
-                print("code : "+code)
-                for fac in facilities:
-                    print("fac : "+fac)
+            if workerCodes == "" and facilities == "":
+                all_attendances = []
+                myquery = {
+                    "info.attendanceDate": {"$gte": startTime,
+                                            "$lte": endTime
+                                            }
+                }
+                print("queury : "+str(myquery))
+                attendances = mycol.find(myquery)
+
+                for a in attendances:
+                    # print(a['info'])
+                    all_attendances.append(a['info'])
+
+            elif workerCodes != "" and facilities == "":
+                all_attendances = []
+                for code in workerCodes:
+                    print("code : "+code)
                     myquery = {
                         "info.workerCode": code,
-                        "info.facility": fac,
                         "info.attendanceDate": {"$gte": startTime,
                                                 "$lte": endTime
                                                 }
@@ -104,10 +115,48 @@ class ThreadedConsumer(threading.Thread):
                         # print(a['info'])
                         all_attendances.append(a['info'])
 
+            elif workerCodes == "" and facilities != "":
+                all_attendances = []
+                for fac in facilities:
+                    print("fac : "+fac)
+                    myquery = {
+                        "info.facility": fac,
+                        "info.attendanceDate": {"$gte": startTime,
+                                                "$lte": endTime
+                                                }
+                    }
+                    print("queury : "+str(myquery))
+                    attendances = mycol.find(myquery)
+
+                    for a in attendances:
+                        # print(a['info'])
+                        all_attendances.append(a['info'])
+
+
+            elif workerCodes != "" and facilities != "":
+                all_attendances = []
+                for code in workerCodes:
+                    print("code : "+code)
+                    for fac in facilities:
+                        print("fac : "+fac)
+                        myquery = {
+                            "info.workerCode": code,
+                            "info.facility": fac,
+                            "info.attendanceDate": {"$gte": startTime,
+                                                    "$lte": endTime
+                                                    }
+                        }
+                        print("queury : "+str(myquery))
+                        attendances = mycol.find(myquery)
+
+                        for a in attendances:
+                            # print(a['info'])
+                            all_attendances.append(a['info'])
+
             if len(all_attendances) != 0:
                 errcode = "200"
-                msg = {
-                    "messageId": "1f2b27a3-c6ec-443e-92f0-d82f5057ebc2",
+                msg_ack = {
+                    "messageId": messageId,
                     "operation": get_attendance_operation_name+"_RES",
                     "code": errcode,
                     "errorMsg": "No error message",
@@ -116,8 +165,8 @@ class ThreadedConsumer(threading.Thread):
 
             else:
                 errcode = "404"
-                msg = {
-                    "messageId": "1f2b27a3-c6ec-443e-92f0-d82f5057ebc2",
+                msg_ack = {
+                    "messageId": messageId,
                     "operation": get_attendance_operation_name+"_RES",
                     "code": errcode,
                     "errorMsg": "Failed to get attendances due to... can't find any attendance",
@@ -126,15 +175,15 @@ class ThreadedConsumer(threading.Thread):
                 }
                 print("Failed to get attendances due to... can't find any attendance")
 
-            routingKey = exchange+"."+str(infroute['attendanceres'])
+            routingKey = EXCHANGE+"."+str(infroute['attendanceres'])
             queueName = str(infqueue['attendanceres'])
             isqmqpSuccess = alicloudAMQP.amqpPublish(
-                exchange, routingKey, message, queueName)
+                EXCHANGE, routingKey, msg_ack, queueName)
 
             all_transection = []
             transection = {}
-            transection["topic"] = pub_topic
-            transection["body"] = msg
+            transection["topic"] = get_attendance_operation_name+"_RES"
+            transection["body"] = msg_ack
             transection["ackcode"] = errcode
 
             all_transection.append(transection)
@@ -158,6 +207,7 @@ class ThreadedConsumer(threading.Thread):
                 "tasks": {
                     "amqp": {
                         "queue": queueName,
+                        "routingKey": routingKey,
                         "success": isqmqpSuccess
                     },
                     "database": {
