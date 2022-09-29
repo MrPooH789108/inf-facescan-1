@@ -1,10 +1,12 @@
 from paho.mqtt.client import MQTT_LOG_INFO, MQTT_LOG_NOTICE, MQTT_LOG_WARNING, MQTT_LOG_ERR, MQTT_LOG_DEBUG
 from paho.mqtt import client as mqtt
 import configparser
+import logging
 import socket
 import json
 import time
 import ssl
+import sys
 import os
 
 config_path = "/opt/innoflex/config/configfile.ini"
@@ -23,6 +25,13 @@ port = int(infmqtt['port'])
 
 client_id=groupId+'@@@'+socket.gethostname()+"-client"
 
+#Creating and Configuring Logger
+logger = logging.getLogger('MQTT-Handler')
+streamFormat = logging.Formatter('%(asctime)s %(name)s [%(levelname)s] %(message)s')
+streamHandler = logging.StreamHandler(sys.stdout)
+streamHandler.setFormatter(streamFormat)
+streamHandler.setLevel(logging.DEBUG)
+
 def on_log(client, userdata, level, buf):
     if level == MQTT_LOG_INFO:
         head = 'INFO'
@@ -36,27 +45,27 @@ def on_log(client, userdata, level, buf):
         head = 'DEBUG'
     else:
         head = level
-    print('%s: %s' % (head, buf))
+    logger.debug('%s: %s' % (head, buf))
 
 
 def on_connect(client, userdata, flags, rc):
-    print('Connected with result code ' + str(rc))
+    logger.debug('Connected with result code ' + str(rc))
     data = json.dumps(msg)
-    print(data)
+    logger.debug(data)
     rc = client.publish(topic, data, qos=1)
-    print('rc: %s' % rc)
+    logger.debug('rc: %s' % rc)
     time.sleep(1)
     client.loop_stop()  # Stop loop
     client.disconnect()  # disconnect
 
 
 def on_message(client, userdata, msg):
-    print(msg.topic + ' ' + str(msg.payload))
+    logger.debug(msg.topic + ' ' + str(msg.payload))
 
 
 def on_disconnect(client, userdata, rc):
     if rc != 0:
-        print('Unexpected disconnection %s' % rc)
+        logger.debug('Unexpected disconnection %s' % rc)
 
 
 def mqttPublish(pub_msg, pub_topic):
@@ -80,6 +89,6 @@ def mqttPublish(pub_msg, pub_topic):
         return isSuccess
 
     except Exception as e:
-        print(str(e))
+        logger.error(str(e))
         isSuccess = False
         return isSuccess

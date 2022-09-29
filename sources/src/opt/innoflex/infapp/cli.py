@@ -1,5 +1,5 @@
-"""This module provides the innoflex app CLI."""
-
+""" This module provides the innoflex app CLI """
+""" cli.py """
 from typing import Optional
 import configparser
 import typer

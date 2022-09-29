@@ -6,14 +6,10 @@ import sys
 
 #Creating and Configuring Logger
 logger = logging.getLogger('AMQP-Handler')
-#fileHandler = logging.FileHandler(LOG_PATH)
+streamFormat = logging.Formatter('%(asctime)s %(name)s [%(levelname)s] %(message)s')
 streamHandler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "function": "%(funcName)s", "message": "%(message)s"}')
-streamHandler.setFormatter(formatter)
-#fileHandler.setFormatter(formatter)
-logger.addHandler(streamHandler)
-#logger.addHandler(fileHandler)
-logger.setLevel(logging.DEBUG)
+streamHandler.setFormatter(streamFormat)
+streamHandler.setLevel(logging.DEBUG)
 
 #reduce pika log level
 logging.getLogger("pika").setLevel(logging.WARNING)

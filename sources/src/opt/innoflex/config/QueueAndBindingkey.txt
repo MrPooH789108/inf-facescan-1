@@ -1,0 +1,27 @@
+Queue and Binding key
+
+LAZADA_DEVICES_REC
+amq.topic.face.*.Rec
+
+LAZADA_DEVICES_ACK
+amq.topic.face.*.Ack
+
+LAZADA_DEVICES_HEARTBEAT
+amq.topic.face.heartbeat
+
+LAZADA_WFM-WORKER-SYNC
+amq.topic.workersync
+
+LAZADA_WFM-WORKER-SYNC-RES
+amq.topic.workersync-res
+
+LAZADA_WFM-ATTENDANCE-GET
+amq.topic.attandance-get
+
+LAZADA_WFM-ATTENDANCE-GET-RES
+amq.topic.attandance-get-res
+
+LAZADA_WFM-ATTENDANCE-SYNC
+amq.topic.attandancesync
+
+

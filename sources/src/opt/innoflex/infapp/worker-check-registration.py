@@ -1,4 +1,5 @@
-"""This module check if worker is unregister but have active status , it will register worker"""
+""" This module check if worker is unregister """
+""" worker-check-registration.py """
 
 from module import alicloudDatabase
 from module import alicloudMQTT
@@ -43,24 +44,27 @@ create_worker_operation_name = infoperation['create_worker']
 
 LOG_PATH = inflog['path']
 # Creating and Configuring Logger
-logger = logging.getLogger('checkUnregister')
-fileHandler = logging.FileHandler(LOG_PATH+"/inf-worker-sync.log")
-streamHandler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter(
-    '{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "function": "%(funcName)s", "message": "%(message)s"}')
-streamHandler.setFormatter(formatter)
-fileHandler.setFormatter(formatter)
-logger.addHandler(streamHandler)
-logger.addHandler(fileHandler)
+logger = logging.getLogger('CheckRegister')
 logger.setLevel(logging.DEBUG)
 
-# reduce pika log level
+fileFormat = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s"}')
+fileHandler = logging.FileHandler(LOG_PATH+"/inf-worker-sync.log")      
+fileHandler.setFormatter(fileFormat)
+fileHandler.setLevel(logging.INFO)
+logger.addHandler(fileHandler)
+
+streamFormat = logging.Formatter('%(asctime)s %(name)s [%(levelname)s] %(message)s')
+streamHandler = logging.StreamHandler(sys.stdout)
+streamHandler.setFormatter(streamFormat)
+streamHandler.setLevel(logging.DEBUG)
+logger.addHandler(streamHandler)
+
+#reduce pika log level
 logging.getLogger("pika").setLevel(logging.WARNING)
 
 
 def get_as_base64(url):
     return base64.b64encode(requests.get(url).content)
-
 
 def checkRegistration():
     data = {}
@@ -77,7 +81,7 @@ def checkRegistration():
         workerlist = mycol.find(myquery)
 
         for w in workerlist:
-            print(w)
+            logger.debug(w)
             messageId = w["registration"]["last_messageId"]
             workerCode = w['info']['workerCode']
             workerName = w['info']['name']
@@ -92,7 +96,7 @@ def checkRegistration():
                 d_regis = device["regester"]
 
                 if d_status == "ACTIVE" and d_regis == "unregistered":
-                    print("unregister device : "+str(device))
+                    logger.debug("unregister device : "+str(device))
                     tempCardType = 0  # permanent
 
                     if workerGender == "MALE":
@@ -117,11 +121,11 @@ def checkRegistration():
                         }
                     }
 
-                    print("---- worker_json ----")
-                    print(worker_json)
-                    print("---- pub_topic ----")
+                    logger.debug("---- worker_json ----")
+                    logger.debug(worker_json)
+                    logger.debug("---- pub_topic ----")
                     pub_topic = parent_topic+"/face/"+device["deviceCode"]
-                    print(pub_topic)
+                    logger.debug(pub_topic)
                     alicloudMQTT.mqttPublish(worker_json, pub_topic)
 
                     transection = {}
@@ -143,11 +147,11 @@ def checkRegistration():
                             }
                     }
 
-                    print("---- worker_json ----")
-                    print(worker_json)
-                    print("---- pub_topic ----")
+                    logger.debug("---- worker_json ----")
+                    logger.debug(worker_json)
+                    logger.debug("---- pub_topic ----")
                     pub_topic = parent_topic+"/face/"+device["deviceCode"]
-                    print(pub_topic)
+                    logger.debug(pub_topic)
                     alicloudMQTT.mqttPublish(worker_json, pub_topic)
 
                     transection = {}
@@ -160,7 +164,7 @@ def checkRegistration():
                     time.sleep(5)
 
                 elif d_status == "BLACKLISTED" and d_regis == "unregistered":
-                    print("unregister device : "+str(device))
+                    logger.debug("unregister device : "+str(device))
                     tempCardType = 0  # permanent
 
                     if workerGender == "MALE":
@@ -185,11 +189,11 @@ def checkRegistration():
                         }
                     }
 
-                    print("---- worker_json ----")
-                    print(worker_json)
-                    print("---- pub_topic ----")
+                    logger.debug("---- worker_json ----")
+                    logger.debug(worker_json)
+                    logger.debug("---- pub_topic ----")
                     pub_topic = parent_topic+"/face/"+device["deviceCode"]
-                    print(pub_topic)
+                    logger.debug(pub_topic)
                     alicloudMQTT.mqttPublish(worker_json, pub_topic)
 
                     transection = {}
@@ -215,7 +219,7 @@ def checkRegistration():
             isSuccess = alicloudDatabase.insertToDB(transectiontb, data)
 
             if isSuccess == True:
-                print("Insert transection success")
+                logger.debug("Insert transection success")
                 log = {
                     "data": data,
                     "tasks": {
@@ -230,18 +234,9 @@ def checkRegistration():
                 logs = str(log)
                 logger.info(logs.replace("'", '"'))
             else:
-                print("Transection already exist")
-
-        print()
+                logger.warning("Transection already exist")
 
     except Exception as e:
-        print(str(e))
-        log = {
-            "data": data,
-            "error": str(e)
-        }
-        logs = str(log)
-        logger.error(logs.replace("'", '"'))
-
+        logger.error(str(e))
 
 checkRegistration()

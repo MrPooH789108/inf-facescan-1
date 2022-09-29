@@ -1,4 +1,5 @@
-"""This module recieve message from MQTT broker and forward to AMQP broker"""
+""" This module recieve message from MQTT broker and forward to AMQP broker """
+""" forwarder.py """
 
 from paho.mqtt.client import MQTT_LOG_INFO, MQTT_LOG_NOTICE, MQTT_LOG_WARNING, MQTT_LOG_ERR, MQTT_LOG_DEBUG
 from paho.mqtt import client as mqtt
@@ -36,7 +37,25 @@ snapQueue = infqueue['devicesnap']
 visitorQueue = infqueue['visitorsync']
 
 client_id=groupId+'@@@'+socket.gethostname()+"-forwarder"
-LOG_PATH = inflog['path']+"/inf-forwarder.log"
+LOG_PATH = inflog['path']
+
+logger = logging.getLogger('Forwarder')
+logger.setLevel(logging.DEBUG)
+
+fileFormat = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s"}')
+fileHandler = logging.FileHandler(LOG_PATH+"/inf-forwarder.log")        
+fileHandler.setFormatter(fileFormat)
+fileHandler.setLevel(logging.INFO)
+logger.addHandler(fileHandler)
+
+streamFormat = logging.Formatter('%(asctime)s %(name)s [%(levelname)s] %(message)s')
+streamHandler = logging.StreamHandler(sys.stdout)
+streamHandler.setFormatter(streamFormat)
+streamHandler.setLevel(logging.DEBUG)
+logger.addHandler(streamHandler)
+
+#reduce pika log level
+logging.getLogger("pika").setLevel(logging.WARNING)
 
 def on_log(client, userdata, level, buf):
     try:
@@ -69,7 +88,7 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client1, userdata, message):
     try :
         msg=str(message.payload.decode("utf-8"))
-        logger.info(msg)
+        logger.debug(msg)
 
         tp = str(message.topic)
         if tp.endswith('/'):
@@ -95,7 +114,6 @@ def on_message(client1, userdata, message):
         else:
             queueName = hbQueue
         
-        
         alicloudAMQP.amqpPublish(exchange,routingKey,msg,queueName)
 
     except Exception as e:
@@ -109,22 +127,7 @@ def on_disconnect(client, userdata, rc):
         logger.error(str(e))
 
 if __name__ == "__main__":
-    #Creating and Configuring Logger
-    logger = logging.getLogger(client_id)
-    fileHandler = logging.FileHandler(LOG_PATH)
-    streamHandler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "function": "%(funcName)s", "message": "%(message)s"}')
-    streamHandler.setFormatter(formatter)
-    fileHandler.setFormatter(formatter)
-    logger.addHandler(streamHandler)
-    logger.addHandler(fileHandler)
-    logger.setLevel(logging.DEBUG)
-
-    #reduce pika log level
-    logging.getLogger("pika").setLevel(logging.WARNING)
-
     try :
-
         client = mqtt.Client(client_id, protocol=mqtt.MQTTv311, clean_session=False)
         client.on_log = on_log
         client.on_connect = on_connect

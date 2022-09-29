@@ -1,4 +1,5 @@
-"""This module check complete transection and send res message to LAZ"""
+""" This module check complete transection and send res message to wfm """
+""" worker-check-transection.py """
 
 from module import alicloudDatabase
 from module import alicloudAMQP
@@ -56,15 +57,20 @@ timeout = int(transection_timeout/transection_review_interval)
 LOG_PATH = inflog['path']
 
 #Creating and Configuring Logger
-logger = logging.getLogger('checkTransection')
-fileHandler = logging.FileHandler(LOG_PATH+"/inf-worker-sync.log")
-streamHandler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "function": "%(funcName)s", "message": "%(message)s"}')
-streamHandler.setFormatter(formatter)
-fileHandler.setFormatter(formatter)
-logger.addHandler(streamHandler)
-logger.addHandler(fileHandler)
+logger = logging.getLogger('CheckTransection')
 logger.setLevel(logging.DEBUG)
+
+fileFormat = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s"}')
+fileHandler = logging.FileHandler(LOG_PATH+"/inf-worker-sync.log")  
+fileHandler.setFormatter(fileFormat)
+fileHandler.setLevel(logging.INFO)
+logger.addHandler(fileHandler)
+
+streamFormat = logging.Formatter('%(asctime)s %(name)s [%(levelname)s] %(message)s')
+streamHandler = logging.StreamHandler(sys.stdout)
+streamHandler.setFormatter(streamFormat)
+streamHandler.setLevel(logging.DEBUG)
+logger.addHandler(streamHandler)
 
 #reduce pika log level
 logging.getLogger("pika").setLevel(logging.WARNING)
@@ -103,14 +109,14 @@ def checkTransectionAndSendREStoLAZ():
                 if chkList(all_ackcode) == True:
                     ackcode = all_ackcode[0]
                     all_ackdetail = all_ackdetail[0]
-                    print("All result same ackcode : "+str(ackcode))
+                    logger.debug("All result same ackcode : "+str(ackcode))
 
                 else:
                     all_ackcode.remove('200')
                     all_ackdetail.remove('No error message')
                     ackcode = all_ackcode[0]
                     all_ackdetail = all_ackdetail[0]
-                    print("All result diff ackcode")
+                    logger.debug("All result diff ackcode")
 
                 # update on transection table
                 query = {"messageId": messageId}
@@ -141,7 +147,7 @@ def checkTransectionAndSendREStoLAZ():
                         "errorMsg": errMsg,
                         "info": t['info']
                     }
-                print()
+
                 routingKey = exchange+"."+str(infroute['workersyncres'])
                 queueName = str(infqueue['workersyncres'])
                 isqmqpSuccess = alicloudAMQP.amqpPublish(exchange,routingKey,message,queueName)
@@ -173,8 +179,8 @@ def checkTransectionAndSendREStoLAZ():
                     newvalues = {"$set": {"recheck": recheck}}
                     isUpdate = alicloudDatabase.updateOneToDB(
                         transectiontb, query, newvalues)
-                    print("timeout : "+str(timeout))
-                    print("recheck : "+str(recheck))
+                    logger.debug("timeout : "+str(timeout))
+                    logger.debug("recheck : "+str(recheck))
                     log = {
                         "data": {
                             "messageId": messageId,
@@ -204,7 +210,7 @@ def checkTransectionAndSendREStoLAZ():
                     newvalues = {"$set": {"timeout": True}}
                     isUpdate = alicloudDatabase.updateOneToDB(
                         transectiontb, query, newvalues)
-                    print("Waiting ack from device timeout.")
+                    logger.debug("Waiting ack from device timeout.")
                     message = {
                         "messageId": messageId,
                         "operation": "CREATE_UPDATE_WORKER_RES",
@@ -228,16 +234,6 @@ def checkTransectionAndSendREStoLAZ():
                     logger.info(logs.replace("'", '"'))
 
     except Exception as e:
-        print(str(e))
-        log = {
-            "data": {
-                "messageId": messageId,
-                "info": t['info']
-            },
-            "error": str(e)
-        }
-        logs = str(log)
-        logger.error(logs.replace("'", '"'))
-
+        logger.error(str(e))
 
 checkTransectionAndSendREStoLAZ()

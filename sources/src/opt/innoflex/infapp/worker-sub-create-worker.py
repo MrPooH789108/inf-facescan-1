@@ -1,4 +1,5 @@
-""" This module receive create worker """
+""" This module receive create worker message from wfm """
+""" worker-sub-create-worker.py """
 
 from module import connection
 from module import alicloudDatabase
@@ -8,7 +9,6 @@ import configparser
 import threading
 import logging
 import pika
-import oss2
 import ast
 import sys
 import os
@@ -44,6 +44,23 @@ routing_key = exchange+"."+route
 LOG_PATH = inflog['path']
 THREADS = int(infetc['threadnum'])
 
+logger = logging.getLogger('WorkerSync')
+logger.setLevel(logging.DEBUG)
+
+fileFormat = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s"}')
+fileHandler = logging.FileHandler(LOG_PATH+"/inf-worker-sync.log")        
+fileHandler.setFormatter(fileFormat)
+fileHandler.setLevel(logging.INFO)
+logger.addHandler(fileHandler)
+
+streamFormat = logging.Formatter('%(asctime)s %(name)s [%(levelname)s] %(message)s')
+streamHandler = logging.StreamHandler(sys.stdout)
+streamHandler.setFormatter(streamFormat)
+streamHandler.setLevel(logging.DEBUG)
+logger.addHandler(streamHandler)
+
+#reduce pika log level
+logging.getLogger("pika").setLevel(logging.WARNING)
 
 class ThreadedConsumer(threading.Thread):
     def __init__(self):
@@ -51,21 +68,20 @@ class ThreadedConsumer(threading.Thread):
         connect = pika.BlockingConnection(connection.getConnectionParam())
         self.channel = connect.channel()
         self.channel.queue_declare(queueName, durable=True, auto_delete=False)
-        self.channel.queue_bind(exchange=exchange,queue=queueName,routing_key=routing_key)
         self.channel.basic_qos(prefetch_count=THREADS*10)
         threading.Thread(target=self.channel.basic_consume(
             queueName, on_message_callback=self.on_message))
 
     def on_message(self, channel, method_frame, header_frame, body):
         try:
-            print(method_frame.delivery_tag)
+            logger.debug(method_frame.delivery_tag)
             body = str(body.decode())
-            print(body)
-            print()
+            logger.debug(body)
 
             message = ast.literal_eval(body)
             operation = message['operation']
-            print("operation : "+operation)
+            logger.debug("operation : "+operation)
+
             if operation == "CREATE_UPDATE_WORKER":
                 info = message['info']
                 messageId = message['messageId']
@@ -75,7 +91,7 @@ class ThreadedConsumer(threading.Thread):
 
                 time = datetime.now()
                 last_update = time.strftime("%Y-%m-%d %H:%M:%S")
-                print("Data formating:", last_update)
+                logger.debug("Data formating:", last_update)
 
                 # find existing workercode
                 mydb = dbClient[dbName]
@@ -86,13 +102,13 @@ class ThreadedConsumer(threading.Thread):
                 for w in w_exist:
                     w_count = w_count+1
 
-                print("Existing worker : "+ str(w_count))
+                logger.debug("Existing worker : "+ str(w_count))
                 # Exising worker
                 if w_count > 0 :
-                    print("worker code is already exist")
+                    logger.debug("worker code is already exist")
                     w_exist = mycol.find(myquery)
                     for w in w_exist:
-                        print(w)
+                        logger.debug(w)
                         # update info section
                         newvalues = {"$set": {"info": info}}
                         isUpdateInfo = alicloudDatabase.updateOneToDB(
@@ -108,27 +124,27 @@ class ThreadedConsumer(threading.Thread):
                             workertb, myquery, newvalues)
 
                         # update devices section
-                        print("--- update devices section ")
+                        logger.debug("--- update devices section ")
                         old_devices = w["devices"]
                         
                         # list exist facilities
-                        print("--- list exist facilities ")
+                        logger.debug("--- list exist facilities ")
                         old_faci = []
                         for ex in old_devices:
                             facility = ex["facility"]
                             old_faci.append(facility)
                         
                         old_faci = list(dict.fromkeys(old_faci))
-                        print("old_faci : "+str(old_faci))
+                        logger.debug("old_faci : "+str(old_faci))
 
                         new_faci = facilities
-                        print("new_faci : "+str(new_faci))
+                        logger.debug("new_faci : "+str(new_faci))
 
                         add_faci = list(set(new_faci) - set(old_faci)) # add
                         del_faci = list(set(old_faci) - set(new_faci)) # del
 
-                        print("Add new facility : "+str(add_faci))
-                        print("Del old facility : "+str(del_faci))
+                        logger.debug("Add new facility : "+str(add_faci))
+                        logger.debug("Del old facility : "+str(del_faci))
 
 
                         # update new devices 
@@ -140,15 +156,15 @@ class ThreadedConsumer(threading.Thread):
                                 del device["_id"]
                                 del device["name"]
                                 del device["ipaddr"]
-                                # print(d)
+
                                 device["status"] = status
                                 device["regester"] = "unregistered"
                                 device["last_update"] = last_update
 
                                 all_devices.append(device)
                             
-                            print("--- all devices ---")
-                            print(all_devices)
+                            logger.debug("--- all devices ---")
+                            logger.debug(all_devices)
                             newvalues = {"$set": {"devices": all_devices}}
                             isUpdateDevices = alicloudDatabase.updateOneToDB(
                                 workertb, myquery, newvalues)
@@ -160,19 +176,19 @@ class ThreadedConsumer(threading.Thread):
                             devices = alicloudDatabase.getAlldevicesByfacility(old_faci)
                             for d in devices:
                                 deviceCode = d['deviceCode']
-                                print("device code : "+str(deviceCode))
+                                logger.debug("device code : "+str(deviceCode))
                                 query = {"info.workerCode": workerCode, "devices": {
                                     "$elemMatch": {"deviceCode": deviceCode}}}
 
                                 if status == "BLACKLISTED":
-                                    print("query : "+str(query))
+                                    logger.debug("query : "+str(query))
                                     newvalues = {"$set": {"devices.$.status": "BLACKLISTED","devices.$.regester": "unregistered", "devices.$.last_update": last_update}}
                                 
                                 else:
-                                    print("query : "+str(query))
+                                    logger.debug("query : "+str(query))
                                     newvalues = {"$set": {"devices.$.status": status, "devices.$.last_update": last_update}}
 
-                                print("new value : "+str(newvalues))
+                                logger.debug("new value : "+str(newvalues))
                                 isUpdateDevices = alicloudDatabase.updateOneToDB(
                                     workertb, query, newvalues)
                         else:
@@ -183,12 +199,12 @@ class ThreadedConsumer(threading.Thread):
                             devices = alicloudDatabase.getAlldevicesByfacility(del_faci)
                             for d in devices:
                                 deviceCode = d['deviceCode']
-                                print("device code : "+str(deviceCode))
+                                logger.debug("device code : "+str(deviceCode))
                                 query = {"info.workerCode": workerCode, "devices": {
                                     "$elemMatch": {"deviceCode": deviceCode}}}
-                                print("query : "+str(query))
+                                logger.debug("query : "+str(query))
                                 newvalues = {"$set": {"devices.$.status": "INACTIVE", "devices.$.regester": "registered", "devices.$.last_update": last_update}}
-                                print("new value : "+str(newvalues))
+                                logger.debug("new value : "+str(newvalues))
                                 isUpdateDevices = alicloudDatabase.updateOneToDB(
                                     workertb, query, newvalues)
                         else:
@@ -230,13 +246,13 @@ class ThreadedConsumer(threading.Thread):
                         del device["_id"]
                         del device["name"]
                         del device["ipaddr"]
-                        # print(d)
+                        # logger.debug(d)
                         device["status"] = status
                         device["regester"] = "unregistered"
                         device["last_update"] = last_update
 
                         all_devices.append(device)
-                        print(all_devices)
+                        logger.debug(all_devices)
 
                     del message["messageId"]
                     del message["operation"]
@@ -245,9 +261,9 @@ class ThreadedConsumer(threading.Thread):
                     message["devices"] = all_devices
                     message["_id"] = workerCode
 
-                    print(message)
+                    logger.debug(message)
                     isSuccess = alicloudDatabase.insertToDB(workertb, message)
-                    print("insert data to database success ? : "+str(isSuccess))
+                    logger.debug("insert data to database success ? : "+str(isSuccess))
 
                     log = {
                         "data": message,
@@ -267,16 +283,14 @@ class ThreadedConsumer(threading.Thread):
                             delivery_tag=method_frame.delivery_tag)
                     else:
                         channel.basic_ack(delivery_tag=method_frame.delivery_tag)
-            
+            else:
+                # not CREATE_UPDATE_WORKER package , Do nothing
+                logger.debug('not CREATE_UPDATE_WORKER package , Do nothing')
+                channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+
         except Exception as e:
-            print(str(e))
-            log = {
-                "data": message,
-                "error": str(e)
-            }
-            logs = str(log)
-            logger.error(logs.replace("'", '"'))
-            channel.basic_reject(delivery_tag=method_frame.delivery_tag)
+            logger.error("Error on "+str(e)+", or Invalid message format -- drop message")
+            channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
     def run(self):
         try:
@@ -284,8 +298,7 @@ class ThreadedConsumer(threading.Thread):
             self.channel.start_consuming()
 
         except Exception as e:
-            print(str(e))
-
+            logger.error(str(e))
 
 def main():
     for i in range(THREADS):
@@ -293,19 +306,5 @@ def main():
         td = ThreadedConsumer()
         td.start()
 
-
 if __name__ == "__main__":
-    #Creating and Configuring Logger
-    logger = logging.getLogger('receieveCreateWorker')
-    fileHandler = logging.FileHandler(LOG_PATH+"/inf-worker-sync.log")
-    streamHandler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "function": "%(funcName)s", "message": "%(message)s"}')
-    streamHandler.setFormatter(formatter)
-    fileHandler.setFormatter(formatter)
-    logger.addHandler(streamHandler)
-    logger.addHandler(fileHandler)
-    logger.setLevel(logging.DEBUG)
-
-    #reduce pika log level
-    logging.getLogger("pika").setLevel(logging.WARNING)
     main()

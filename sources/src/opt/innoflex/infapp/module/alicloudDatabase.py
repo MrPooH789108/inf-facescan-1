@@ -27,14 +27,16 @@ LOG_PATH = inflog['path']
 
 #Creating and Configuring Logger
 logger = logging.getLogger('database')
+
+fileFormat = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s"}')
 fileHandler = logging.FileHandler(LOG_PATH+"/database.log")
+fileHandler.setFormatter(fileFormat)
+fileHandler.setLevel(logging.INFO)
+
+streamFormat = logging.Formatter('%(asctime)s %(name)s [%(levelname)s] %(message)s')
 streamHandler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "function": "%(funcName)s", "message": "%(message)s"}')
-streamHandler.setFormatter(formatter)
-fileHandler.setFormatter(formatter)
-logger.addHandler(streamHandler)
-logger.addHandler(fileHandler)
-logger.setLevel(logging.DEBUG)
+streamHandler.setFormatter(streamFormat)
+streamHandler.setLevel(logging.DEBUG)
 
 #reduce pika log level
 logging.getLogger("pika").setLevel(logging.WARNING)
