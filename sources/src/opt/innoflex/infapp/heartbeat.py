@@ -19,7 +19,7 @@ amqp_host = infamqp['endpoint']
 exchange = infamqp['exchange']
 routing_key = exchange+".face.heartbeat"
 
-queueName = infqueue['deviceheartbeat']
+queueName = infqueue['devicehb']
 
 LOG_PATH = inflog['path']
 THREADS = int(infetc['threadnum'])
@@ -55,7 +55,7 @@ def setup_logger(name, log_file, level=logging.INFO):
   
 class HeartbeatHandler(threading.Thread):
     def __init__(self):   
-        logger = setup_logger('heartbeat', LOG_PATH+"/"+"_heartbeat.log") 
+        logger = setup_logger('heartbeat', LOG_PATH+"/"+"heartbeat.log") 
         try : 
             threading.Thread.__init__(self)
             connect = pika.BlockingConnection(connection.getConnectionParam())
@@ -91,12 +91,12 @@ class HeartbeatHandler(threading.Thread):
             channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
         except Exception as e:  
-            logger = setup_logger('heartbeat', LOG_PATH+"/"+"_heartbeat.log") 
+            logger = setup_logger('heartbeat', LOG_PATH+"/"+"heartbeat.log") 
             logger.error("Error on "+str(e)+", or Invalid message format -- drop message")
             channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
     def run(self):
-        logger = setup_logger('heartbeat', LOG_PATH+"/"+"_heartbeat.log") 
+        logger = setup_logger('heartbeat', LOG_PATH+"/"+"heartbeat.log") 
         try:
             logger.debug('starting thread to consume from AMQP...')
             self.channel.start_consuming()
@@ -105,7 +105,7 @@ class HeartbeatHandler(threading.Thread):
             logger.error(str(e))
 
 def main():
-    logger = setup_logger('heartbeat', LOG_PATH+"/"+"_heartbeat.log")   
+    logger = setup_logger('heartbeat', LOG_PATH+"/"+"heartbeat.log")   
     for i in range(THREADS):
         logger.debug('launch thread '+str(i))
         td = HeartbeatHandler()
