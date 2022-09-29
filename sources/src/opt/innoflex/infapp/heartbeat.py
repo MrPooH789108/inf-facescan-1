@@ -19,32 +19,43 @@ amqp_host = infamqp['endpoint']
 exchange = infamqp['exchange']
 routing_key = exchange+".face.heartbeat"
 
-queueName = infqueue['devicehb']
+queueName = infqueue['deviceheartbeat']
 
 LOG_PATH = inflog['path']
 THREADS = int(infetc['threadnum'])
 
-logger = logging.getLogger('heartbeat-log')
-logger.setLevel(logging.DEBUG)
+loggers = {}
+def setup_logger(name, log_file, level=logging.INFO):
+    global loggers
+    
+    if loggers.get(name):
+        return loggers.get(name)
 
-fileFormat = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s"}')
-fileHandler = logging.FileHandler(LOG_PATH+"/"+"heartbeat.log")        
-fileHandler.setFormatter(fileFormat)
-fileHandler.setLevel(logging.INFO)
-logger.addHandler(fileHandler)
+    else:
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.DEBUG)
 
-streamFormat = logging.Formatter('%(asctime)s %(name)s [%(levelname)s] %(message)s')
-streamHandler = logging.StreamHandler(sys.stdout)
-streamHandler.setFormatter(streamFormat)
-streamHandler.setLevel(logging.DEBUG)
-logger.addHandler(streamHandler)
+        fileFormat = logging.Formatter('{"timestamp":"%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s"}')
+        fileHandler = logging.FileHandler(log_file)        
+        fileHandler.setFormatter(fileFormat)
+        fileHandler.setLevel(level)
+        logger.addHandler(fileHandler)
 
-#reduce pika log level
-logging.getLogger("pika").setLevel(logging.WARNING)
+        streamFormat = logging.Formatter('%(asctime)s %(name)s [%(levelname)s] %(message)s')
+        streamHandler = logging.StreamHandler(sys.stdout)
+        streamHandler.setFormatter(streamFormat)
+        streamHandler.setLevel(logging.DEBUG)
+        logger.addHandler(streamHandler)
 
-        
+        #reduce pika log level
+        logging.getLogger("pika").setLevel(logging.WARNING)
+        loggers[name] = logger
+
+    return logger
+  
 class HeartbeatHandler(threading.Thread):
-    def __init__(self):
+    def __init__(self):   
+        logger = setup_logger('heartbeat', LOG_PATH+"/"+"_heartbeat.log") 
         try : 
             threading.Thread.__init__(self)
             connect = pika.BlockingConnection(connection.getConnectionParam())
@@ -74,15 +85,18 @@ class HeartbeatHandler(threading.Thread):
             deviceCode = facedevice.split("@@@")[1]
 
             if operation == "HeartBeat":
+                logger = setup_logger(str(deviceCode), LOG_PATH+"/"+str(deviceCode)+"_heartbeat.log")    
                 logger.info(body)
 
             channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
-        except Exception as e:
+        except Exception as e:  
+            logger = setup_logger('heartbeat', LOG_PATH+"/"+"_heartbeat.log") 
             logger.error("Error on "+str(e)+", or Invalid message format -- drop message")
             channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
     def run(self):
+        logger = setup_logger('heartbeat', LOG_PATH+"/"+"_heartbeat.log") 
         try:
             logger.debug('starting thread to consume from AMQP...')
             self.channel.start_consuming()
@@ -91,6 +105,7 @@ class HeartbeatHandler(threading.Thread):
             logger.error(str(e))
 
 def main():
+    logger = setup_logger('heartbeat', LOG_PATH+"/"+"_heartbeat.log")   
     for i in range(THREADS):
         logger.debug('launch thread '+str(i))
         td = HeartbeatHandler()
